@@ -1,0 +1,179 @@
+{% extends "users/basic.html" %}
+{% block content %}
+
+<div class="container mt-5">
+  <div class="row">
+    <div class="col-lg-8 mx-auto">
+
+      <!-- Movie Info -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+              <h4 class="card-title">{{ theater.movie.name }}</h4>
+              <p class="text-muted">
+                {{ theater.name }} | {{ theater.time }}
+              </p>
+            </div>
+            <div>
+              <button class="btn btn-outline-primary">2D</button>
+              <button class="btn btn-outline-primary">3D</button>
+              <button class="btn btn-outline-primary">IMAX 3D</button>
+              <button class="btn btn-outline-primary">
+                {{ seats|length }} Seats
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seat Selection -->
+      <div class="card">
+        <div class="card-body">
+          <h5 class="text-center mb-4">Select Your Seats</h5>
+
+          <div class="screen">All eyes this way please!</div>
+
+          <form action="{% url 'movies:book_seats' theater.id %}" method="POST">
+            {% csrf_token %}
+
+            <div class="seat-grid">
+
+              {% for seat in seats %}
+              <label class="seat-box">
+
+                <input type="checkbox"
+                       name="seats"
+                       value="{{ seat.id }}"
+                       {% if seat.is_booked or seat.is_locked %}disabled{% endif %}>
+
+                <span class="
+                    {% if seat.is_booked %}
+                        sold
+                    {% elif seat.is_locked %}
+                        locked
+                    {% else %}
+                        available
+                    {% endif %}
+                ">
+                  {{ seat.seat_number }}
+                </span>
+
+              </label>
+              {% endfor %}
+
+            </div>
+
+            <!-- Legend -->
+            <div class="legend mt-4 text-center">
+              <span class="seat-demo available"></span> Available
+              <span class="seat-demo selected"></span> Selected
+              <span class="seat-demo sold"></span> Sold
+              <span class="seat-demo locked"></span> Locked
+            </div>
+
+            <!-- Button -->
+            <div class="text-center mt-4">
+              <button class="btn btn-success btn-lg">
+                Book Selected Seats
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger text-center">
+    {{ error }}
+</div>
+{% endif %}
+
+<style>
+
+/* GRID */
+.seat-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 12px;
+  justify-items: center;
+  margin-top: 20px;
+}
+
+/* BOX */
+.seat-box {
+  cursor: pointer;
+}
+
+/* HIDE CHECKBOX */
+.seat-box input {
+  display: none;
+}
+
+/* SEAT STYLE */
+.seat-box span {
+  display: inline-block;
+  width: 45px;
+  height: 45px;
+  line-height: 45px;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 500;
+  transition: 0.2s;
+}
+
+/* AVAILABLE */
+.available {
+  background-color: #e9ecef;
+}
+
+/* SELECTED (IMPORTANT FIX) */
+.seat-box input:checked + span {
+  background-color: #28a745;
+  color: white;
+}
+
+/* SOLD */
+.sold {
+  background-color: #6c757d;
+  color: white;
+  cursor: not-allowed;
+}
+
+/* LOCKED */
+.locked {
+  background-color: #fd7e14;
+  color: white;
+  cursor: not-allowed;
+}
+
+/* SCREEN */
+.screen {
+  margin: 20px 0;
+  background: #ccc;
+  padding: 10px;
+  text-align: center;
+  border-radius: 5px;
+}
+
+/* LEGEND */
+.legend span {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin: 0 5px;
+  border-radius: 4px;
+}
+
+.seat-demo.available { background: #e9ecef; }
+.seat-demo.selected { background: #28a745; }
+.seat-demo.sold { background: #6c757d; }
+.seat-demo.locked { background: #fd7e14; }
+
+</style>
+
+{% endblock %}

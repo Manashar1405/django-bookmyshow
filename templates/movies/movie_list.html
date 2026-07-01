@@ -1,0 +1,186 @@
+{% extends "users/basic.html" %}
+{% load movie_tags %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <form method="GET" action="{% url 'movies:movie_list' %}" class="search-bar" id="filterForm">
+                <div class="input-group">
+                    <input
+                        class="form-control form-control-lg"
+                        name="q"
+                        placeholder="Search for Movies by title or cast..."
+                        type="text"
+                        value="{{ search_query }}"
+                    />
+                    <div class="input-group-append">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Hidden inputs for active filters to maintain them during search -->
+                {% for genre in active_genres %}
+                <input type="hidden" name="genre" value="{{ genre }}">
+                {% endfor %}
+                {% for lang in active_languages %}
+                <input type="hidden" name="language" value="{{ lang }}">
+                {% endfor %}
+                <input type="hidden" name="sort" value="{{ active_sort }}">
+            </form>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Sidebar Filters -->
+        <div class="col-md-3">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Filters</h5>
+                    <a href="{% url 'movies:movie_list' %}" class="btn btn-sm btn-outline-secondary">Clear All</a>
+                </div>
+                
+                <div class="card-body">
+                    <form method="GET" action="{% url 'movies:movie_list' %}" id="sidebarFilterForm">
+                        <input type="hidden" name="q" value="{{ search_query }}">
+                        
+                        <!-- Sort Dropdown -->
+                        <h6 class="font-weight-bold mb-3">Sort By</h6>
+                        <select name="sort" class="form-control mb-4" onchange="document.getElementById('sidebarFilterForm').submit();">
+                            {% for choice in MovieSort.choices %}
+                            <option value="{{ choice.0 }}" {% if active_sort == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <!-- Genres -->
+                        <h6 class="font-weight-bold mb-3">Genres</h6>
+                        {% for genre in genre_facets %}
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="genre" value="{{ genre.slug }}" id="genre_{{ genre.slug }}"
+                                   onchange="document.getElementById('sidebarFilterForm').submit();"
+                                   {% if genre.slug in active_genres %}checked{% endif %}>
+                            <label class="form-check-label d-flex justify-content-between w-100" for="genre_{{ genre.slug }}">
+                                <span>{{ genre.name }}</span>
+                                <span class="badge badge-light text-muted">{{ genre.movie_count }}</span>
+                            </label>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted small">No genres available.</p>
+                        {% endfor %}
+
+                        <hr>
+
+                        <!-- Languages -->
+                        <h6 class="font-weight-bold mb-3 mt-4">Languages</h6>
+                        {% for lang in language_facets %}
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="language" value="{{ lang.slug }}" id="lang_{{ lang.slug }}"
+                                   onchange="document.getElementById('sidebarFilterForm').submit();"
+                                   {% if lang.slug in active_languages %}checked{% endif %}>
+                            <label class="form-check-label d-flex justify-content-between w-100" for="lang_{{ lang.slug }}">
+                                <span>{{ lang.name }}</span>
+                                <span class="badge badge-light text-muted">{{ lang.movie_count }}</span>
+                            </label>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted small">No languages available.</p>
+                        {% endfor %}
+                        
+                        <!-- Fallback submit button for non-JS users -->
+                        <noscript>
+                            <button type="submit" class="btn btn-primary btn-block mt-3">Apply Filters</button>
+                        </noscript>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Movie Grid -->
+        <div class="col-md-9">
+            <div class="row" id="movieList">
+                {% for movie in page_obj %}
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100 shadow-sm movie-card">
+                        <a href="{% url 'movies:movie_detail' movie.id %}">
+                            <img src="{{ movie.image.url }}" class="card-img-top" alt="{{ movie.name }}" style="height: 300px; object-fit: cover;">
+                        </a>
+                        <div class="card-body">
+                            <h5 class="card-title text-truncate">
+                                <a href="{% url 'movies:movie_detail' movie.id %}" class="text-dark font-weight-bold" style="text-decoration:none;">
+                                    {{ movie.name }}
+                                </a>
+                            </h5>
+                            
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge badge-success"><i class="fas fa-star text-white"></i> {{ movie.rating }}</span>
+                                {% if movie.release_date %}
+                                <small class="text-muted">{{ movie.release_date|date:"Y" }}</small>
+                                {% endif %}
+                            </div>
+
+                            <p class="card-text small mb-2 text-muted">
+                                {% for genre in movie.genres.all %}
+                                    {{ genre.name }}{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </p>
+                            
+                            <p class="card-text small text-muted text-truncate">
+                                <i class="fas fa-users"></i> {{ movie.cast }}
+                            </p>
+                        </div>
+                        <div class="card-footer bg-white border-top-0">
+                            <a href="{% url 'movies:theater_list' movie.id %}" class="btn btn-outline-primary btn-block">
+                                View Theaters <i class="fas fa-chevron-right ml-2"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12 text-center py-5">
+                    <h4 class="text-muted">No movies found matching your criteria.</h4>
+                    <a href="{% url 'movies:movie_list' %}" class="btn btn-outline-primary mt-3">Clear Filters</a>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination Controls -->
+            {% if page_obj.has_other_pages %}
+            <nav aria-label="Movie navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="{% preserve_query_params page=page_obj.previous_page_number %}">&laquo;</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item"><a class="page-link" href="{% preserve_query_params page=num %}">{{ num }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{% preserve_query_params page=page_obj.next_page_number %}">&raquo;</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.movie-card { transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
+.movie-card:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
+</style>
+{% endblock %}

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Analytics Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .card { border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s; }
+        .card:hover { transform: translateY(-5px); }
+        .metric-title { font-size: 0.9rem; color: #6c757d; text-transform: uppercase; font-weight: 600; }
+        .metric-value { font-size: 2rem; font-weight: 700; color: #2b2d42; }
+    </style>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-dark mb-4">
+    <div class="container-fluid">
+        <span class="navbar-brand mb-0 h1">BookMyShow Admin Analytics</span>
+        <div>
+            <select id="daysFilter" class="form-select form-select-sm d-inline-block w-auto me-2" onchange="fetchAnalytics()">
+                <option value="7">Last 7 Days</option>
+                <option value="30" selected>Last 30 Days</option>
+                <option value="90">Last 90 Days</option>
+            </select>
+            <a href="#" id="exportBtn" class="btn btn-sm btn-outline-light" onclick="exportCSV()">Download CSV</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <div id="loadingIndicator" class="text-center my-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <h5 class="mt-3">Loading Analytics...</h5>
+    </div>
+    
+    <div id="dashboardContent" class="d-none">
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card p-3">
+                    <div class="metric-title">Total Revenue</div>
+                    <div class="metric-value" id="totalRevenue">₹0</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3">
+                    <div class="metric-title">Total Users</div>
+                    <div class="metric-value" id="totalUsers">0</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3">
+                    <div class="metric-title">New Users</div>
+                    <div class="metric-value" id="newUsers">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card p-3">
+                    <h5>Revenue Trend</h5>
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card p-3">
+                    <h5>Theater Occupancy</h5>
+                    <ul class="list-group list-group-flush" id="occupancyList"></ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card p-3">
+                    <h5>Top Movies (Bookings)</h5>
+                    <ul class="list-group list-group-flush" id="moviesList"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let revenueChartInstance = null;
+
+async function fetchAnalytics() {
+    const days = document.getElementById('daysFilter').value;
+    document.getElementById('loadingIndicator').classList.remove('d-none');
+    document.getElementById('dashboardContent').classList.add('d-none');
+    
+    try {
+        const response = await fetch(`/api/v1/analytics/?days=${days}`);
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            const data = result.data;
+            
+            // KPIs
+            document.getElementById('totalRevenue').innerText = '₹' + data.revenue.total_revenue_inr.toLocaleString();
+            document.getElementById('totalUsers').innerText = data.users.total_users;
+            document.getElementById('newUsers').innerText = data.users.new_users;
+            
+            // Revenue Chart
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            if(revenueChartInstance) { revenueChartInstance.destroy(); }
+            
+            revenueChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.revenue.daily_breakdown.map(d => d.date),
+                    datasets: [{
+                        label: 'Daily Revenue (₹)',
+                        data: data.revenue.daily_breakdown.map(d => d.amount),
+                        borderColor: '#0d6efd',
+                        tension: 0.1,
+                        fill: true,
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)'
+                    }]
+                }
+            });
+            
+            // Occupancy List
+            const occList = document.getElementById('occupancyList');
+            occList.innerHTML = '';
+            data.theaters.forEach(t => {
+                occList.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                    ${t.name} <span class="badge bg-primary rounded-pill">${t.occupancy_rate}%</span>
+                </li>`;
+            });
+            
+            // Movies List
+            const movList = document.getElementById('moviesList');
+            movList.innerHTML = '';
+            data.movies.forEach(m => {
+                movList.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                    ${m.name} <span class="badge bg-success rounded-pill">${m.bookings} bookings</span>
+                </li>`;
+            });
+            
+            document.getElementById('loadingIndicator').classList.add('d-none');
+            document.getElementById('dashboardContent').classList.remove('d-none');
+        } else {
+            alert('Error loading analytics: ' + result.message);
+        }
+    } catch(err) {
+        console.error(err);
+        alert('Failed to load dashboard data.');
+    }
+}
+
+// Initial load
+window.onload = fetchAnalytics;
+
+function exportCSV() {
+    const days = document.getElementById('daysFilter').value;
+    window.location.href = `/api/v1/export/?days=${days}`;
+}
+</script>
+</body>
+</html>

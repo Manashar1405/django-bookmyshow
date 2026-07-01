@@ -1,0 +1,24 @@
+Ticket Confirmed!
+=================
+
+Hi {{ user.first_name|default:user.username }}, your booking is successful.
+
+Movie Details
+-------------
+Movie: {{ movie.name }}
+Theater: {{ theater.name }}
+Show Time: {{ theater.time|time:"h:i A" }}
+
+Ticket Information
+------------------
+Booking ID: #{{ booking.id }}
+Seats: {{ seat_numbers }}
+Total Amount: Rs. {{ amount_paid }}
+{% if payment_id %}Transaction ID: {{ payment_id }}{% endif %}
+
+[ QR Code Placeholder ]
+(Present this at the theater entrance)
+
+--------------------------------------------------
+Thank you for choosing BookMySeat. Enjoy the show!
+If you have any questions, contact support@bookmyseat.local

@@ -1,0 +1,72 @@
+{% extends "users/basic.html" %}
+
+{% block content %}
+
+<div class="container py-5 text-center">
+
+    <h2 class="mb-4">Complete Your Payment</h2>
+
+    <button id="pay-btn" class="btn btn-primary btn-lg mb-3">
+        Pay Now
+    </button>
+
+    <hr>
+
+    <h5>If payment not working, use test mode:</h5>
+
+    <button onclick="simulatePayment()" class="btn btn-success mt-3">
+        Simulate Payment Success
+    </button>
+
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<script>
+document.getElementById("pay-btn").onclick = function (e) {
+
+    var options = {
+        "key": "{{ razorpay_key }}",
+        "amount": "{{ payment.amount }}",
+        "currency": "INR",
+        "name": "BookMySeat",
+        "description": "Movie Ticket Booking",
+        "order_id": "{{ payment.id }}",
+
+        "prefill": {
+            "name": "Test User",
+            "email": "test@example.com"
+        },
+
+        "handler": function (response) {
+            window.location.href =
+                "/verify-payment/?payment_id=" + response.razorpay_payment_id +
+                "&order_id=" + response.razorpay_order_id +
+                "&signature=" + response.razorpay_signature;
+        },
+
+        "modal": {
+            "ondismiss": function () {
+                alert("Payment cancelled");
+                window.location.href = "/";
+            }
+        },
+
+        "theme": {
+            "color": "#3399cc"
+        }
+    };
+
+    var rzp = new Razorpay(options);
+    rzp.open();
+
+    e.preventDefault();
+};
+
+function simulatePayment() {
+    window.location.href =
+        "/verify-payment/?payment_id=test_payment_123&order_id=test_order_123&signature=test_signature";
+}
+</script>
+
+{% endblock %}
